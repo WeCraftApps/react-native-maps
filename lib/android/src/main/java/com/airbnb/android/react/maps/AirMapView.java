@@ -44,6 +44,25 @@ import com.google.android.gms.maps.model.Polygon;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.VisibleRegion;
 
+
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.GroundOverlay;
+import com.google.android.gms.maps.model.GroundOverlayOptions;
+import android.net.Uri;
+import com.facebook.imagepipeline.request.ImageRequest;
+import com.facebook.imagepipeline.request.ImageRequestBuilder;
+import com.facebook.imagepipeline.core.ImagePipeline;
+import com.facebook.drawee.backends.pipeline.Fresco;
+import android.util.Log;
+import com.facebook.datasource.DataSource;
+import com.facebook.imagepipeline.image.CloseableImage;
+import com.facebook.common.references.CloseableReference;
+import java.io.*;
+import com.facebook.imagepipeline.image.CloseableStaticBitmap;
+import com.facebook.imagepipeline.datasource.BaseBitmapDataSubscriber;
+import com.facebook.common.executors.CallerThreadExecutor;
+import android.support.annotation.Nullable;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -86,6 +105,8 @@ public class AirMapView extends MapView implements GoogleMap.InfoWindowAdapter,
   private boolean destroyed = false;
   private final ThemedReactContext context;
   private final EventDispatcher eventDispatcher;
+  private GroundOverlay currGroundOverlay;
+  private Bitmap mBitmap;
 
   private static boolean contextHasBug(Context context) {
     return context == null ||
@@ -356,6 +377,67 @@ public class AirMapView extends MapView implements GoogleMap.InfoWindowAdapter,
       paused = true;
     }
     onDestroy();
+  }
+
+  public void setGroundOverlay(ReadableMap groundOverlay) {
+      if (groundOverlay == null) return;
+
+      String image = groundOverlay.getString("image");
+      final Double lat = groundOverlay.getMap("position").getDouble("latitude");
+      final Double lng = groundOverlay.getMap("position").getDouble("longitude");
+      final Float bearing = (groundOverlay.hasKey("bearing")) ? (float) groundOverlay.getDouble("bearing") : 0f;
+      final Float transparency = (groundOverlay.hasKey("transparency")) ? (float) groundOverlay.getDouble("transparency") : 0f;
+      final Float width = (groundOverlay.hasKey("width")) ? (float) groundOverlay.getDouble("width") : 100f;
+      final Float height = (groundOverlay.hasKey("height")) ? (float) groundOverlay.getDouble("height") : 100f;
+
+      ImageRequest imageRequest = ImageRequestBuilder
+          .newBuilderWithSource(Uri.parse(image))
+          .build();
+
+      ImagePipeline imagePipeline = Fresco.getImagePipeline();
+      final DataSource<CloseableReference<CloseableImage>> dataSource = imagePipeline.fetchDecodedImage(imageRequest, this);
+
+      dataSource.subscribe(new BaseBitmapDataSubscriber() {
+          @Override
+          public void onNewResultImpl(@Nullable Bitmap bitmap) {
+
+              CloseableReference<CloseableImage> imageReference = null;
+              try {
+                  imageReference = dataSource.getResult();
+                  if (imageReference != null) {
+                      CloseableImage imageClose = imageReference.get();
+                      if (imageClose != null && imageClose instanceof CloseableStaticBitmap) {
+                          CloseableStaticBitmap closeableStaticBitmap = (CloseableStaticBitmap) imageClose;
+                          Bitmap bmp = closeableStaticBitmap.getUnderlyingBitmap();
+                          if (bmp != null) {
+                              mBitmap = bmp.copy(Bitmap.Config.ARGB_8888, true);
+                          }
+                      }
+                  }
+              } finally {
+                  dataSource.close();
+                  if (imageReference != null) {
+                      CloseableReference.closeSafely(imageReference);
+                  }
+              }
+              // Remove the already existing GroundOverlay, so it doesn't accumulate every render
+              if(currGroundOverlay != null) currGroundOverlay.remove();
+
+              // Keep the GroundOverlay object in memory
+              currGroundOverlay = map.addGroundOverlay(new GroundOverlayOptions()
+                  .image(BitmapDescriptorFactory.fromBitmap(bitmap))
+                  .position(new LatLng(lat, lng), width, height)
+                  .bearing(bearing)
+                  .transparency(transparency));
+          }
+
+          @Override
+          public void onFailureImpl(DataSource dataSource) {
+              if (dataSource != null) {
+                  Log.d("DEBUG","Failure");
+              }
+          }
+      }, CallerThreadExecutor.getInstance());
   }
 
   public void setRegion(ReadableMap region) {

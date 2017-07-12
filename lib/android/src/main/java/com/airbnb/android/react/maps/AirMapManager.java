@@ -75,6 +75,11 @@ public class AirMapManager extends ViewGroupManager<AirMapView> {
     view.setRegion(region);
   }
 
+  @ReactProp(name = "groundOverlay")
+  public void setGroundOverlay(AirMapView view, ReadableMap groundOverlay) {
+    view.setGroundOverlay(groundOverlay);
+  }
+
   @ReactProp(name = "mapType")
   public void setMapType(AirMapView view, @Nullable String mapType) {
     int typeId = MAP_TYPES.get(mapType);
