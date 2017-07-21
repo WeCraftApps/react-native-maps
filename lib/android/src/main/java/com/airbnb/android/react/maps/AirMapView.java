@@ -420,15 +420,6 @@ public class AirMapView extends MapView implements GoogleMap.InfoWindowAdapter,
                       CloseableReference.closeSafely(imageReference);
                   }
               }
-              // Remove the already existing GroundOverlay, so it doesn't accumulate every render
-              if(currGroundOverlay != null) currGroundOverlay.remove();
-
-              // Keep the GroundOverlay object in memory
-              currGroundOverlay = map.addGroundOverlay(new GroundOverlayOptions()
-                  .image(BitmapDescriptorFactory.fromBitmap(bitmap))
-                  .position(new LatLng(lat, lng), width, height)
-                  .bearing(bearing)
-                  .transparency(transparency));
           }
 
           @Override
@@ -438,6 +429,19 @@ public class AirMapView extends MapView implements GoogleMap.InfoWindowAdapter,
               }
           }
       }, CallerThreadExecutor.getInstance());
+
+      // Waiting for the image to be processed
+      while(mBitmap == null) { }
+
+      // Remove the already existing GroundOverlay, so it doesn't accumulate every render
+      if(currGroundOverlay != null) currGroundOverlay.remove();
+
+      // Keep the GroundOverlay object in memory
+      currGroundOverlay = map.addGroundOverlay(new GroundOverlayOptions()
+          .image(BitmapDescriptorFactory.fromBitmap(mBitmap))
+          .position(new LatLng(lat, lng), width, height)
+          .bearing(bearing)
+          .transparency(transparency));
   }
 
   public void setRegion(ReadableMap region) {
