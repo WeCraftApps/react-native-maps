@@ -61,6 +61,7 @@ import java.io.*;
 import com.facebook.imagepipeline.image.CloseableStaticBitmap;
 import com.facebook.imagepipeline.datasource.BaseBitmapDataSubscriber;
 import com.facebook.common.executors.CallerThreadExecutor;
+import com.facebook.common.executors.UiThreadImmediateExecutorService;
 import android.support.annotation.Nullable;
 
 import java.util.ArrayList;
@@ -411,6 +412,16 @@ public class AirMapView extends MapView implements GoogleMap.InfoWindowAdapter,
                           Bitmap bmp = closeableStaticBitmap.getUnderlyingBitmap();
                           if (bmp != null) {
                               mBitmap = bmp.copy(Bitmap.Config.ARGB_8888, true);
+
+                              // Remove the already existing GroundOverlay, so it doesn't accumulate every render
+                              if(currGroundOverlay != null) currGroundOverlay.remove();
+
+                              // Keep the GroundOverlay object in memory
+                              currGroundOverlay = map.addGroundOverlay(new GroundOverlayOptions()
+                                  .image(BitmapDescriptorFactory.fromBitmap(mBitmap))
+                                  .position(new LatLng(lat, lng), width, height)
+                                  .bearing(bearing)
+                                  .transparency(transparency));
                           }
                       }
                   }
@@ -428,20 +439,7 @@ public class AirMapView extends MapView implements GoogleMap.InfoWindowAdapter,
                   Log.d("DEBUG","Failure");
               }
           }
-      }, CallerThreadExecutor.getInstance());
-
-      // Waiting for the image to be processed
-      while(mBitmap == null) { }
-
-      // Remove the already existing GroundOverlay, so it doesn't accumulate every render
-      if(currGroundOverlay != null) currGroundOverlay.remove();
-
-      // Keep the GroundOverlay object in memory
-      currGroundOverlay = map.addGroundOverlay(new GroundOverlayOptions()
-          .image(BitmapDescriptorFactory.fromBitmap(mBitmap))
-          .position(new LatLng(lat, lng), width, height)
-          .bearing(bearing)
-          .transparency(transparency));
+      }, UiThreadImmediateExecutorService.getInstance());
   }
 
   public void setRegion(ReadableMap region) {
