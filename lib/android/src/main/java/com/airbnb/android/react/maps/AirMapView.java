@@ -421,6 +421,7 @@ public class AirMapView extends MapView implements GoogleMap.InfoWindowAdapter,
                                   .image(BitmapDescriptorFactory.fromBitmap(mBitmap))
                                   .position(new LatLng(lat, lng), width, height)
                                   .bearing(bearing)
+                                  .zIndex(1)
                                   .transparency(transparency));
                           }
                       }
