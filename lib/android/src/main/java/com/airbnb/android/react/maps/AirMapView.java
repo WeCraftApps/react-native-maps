@@ -442,6 +442,23 @@ public class AirMapView extends MapView implements GoogleMap.InfoWindowAdapter,
       }, UiThreadImmediateExecutorService.getInstance());
   }
 
+  public void setScrollableBoundaries(ReadableMap scrollableBoundaries) {
+      if (scrollableBoundaries == null) return;
+
+      final Double latNE = scrollableBoundaries.getMap("northeast").getDouble("latitude");
+      final Double lngNE = scrollableBoundaries.getMap("northeast").getDouble("longitude");
+
+      final Double latSW = scrollableBoundaries.getMap("southwest").getDouble("latitude");
+      final Double lngSW = scrollableBoundaries.getMap("southwest").getDouble("longitude");
+
+      LatLngBounds srollableBounds = new LatLngBounds(
+          new LatLng(latSW, lngSW), // southwest
+          new LatLng(latNE, lngNE)  // northeast
+      );
+
+      map.setLatLngBoundsForCameraTarget(srollableBounds);
+  }
+
   public void setRegion(ReadableMap region) {
     if (region == null) return;
 

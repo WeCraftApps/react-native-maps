@@ -80,6 +80,11 @@ public class AirMapManager extends ViewGroupManager<AirMapView> {
     view.setGroundOverlay(groundOverlay);
   }
 
+  @ReactProp(name = "scrollableBoundaries")
+  public void setScrollableBoundaries(AirMapView view, ReadableMap scrollableBoundaries) {
+    view.setScrollableBoundaries(scrollableBoundaries);
+  }
+
   @ReactProp(name = "mapType")
   public void setMapType(AirMapView view, @Nullable String mapType) {
     int typeId = MAP_TYPES.get(mapType);
