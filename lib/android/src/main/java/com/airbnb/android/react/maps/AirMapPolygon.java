@@ -107,6 +107,7 @@ public class AirMapPolygon extends AirMapFeature {
 
   @Override
   public void removeFromMap(GoogleMap map) {
+      coordinates = null;
     polygon.remove();
   }
 }

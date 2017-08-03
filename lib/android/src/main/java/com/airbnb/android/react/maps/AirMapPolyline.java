@@ -97,6 +97,7 @@ public class AirMapPolyline extends AirMapFeature {
 
   @Override
   public void removeFromMap(GoogleMap map) {
+      coordinates = null;
     polyline.remove();
   }
 }

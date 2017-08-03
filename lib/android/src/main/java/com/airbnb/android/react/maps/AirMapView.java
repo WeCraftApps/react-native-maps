@@ -106,8 +106,6 @@ public class AirMapView extends MapView implements GoogleMap.InfoWindowAdapter,
   private boolean destroyed = false;
   private final ThemedReactContext context;
   private final EventDispatcher eventDispatcher;
-  private GroundOverlay currGroundOverlay;
-  private Bitmap mBitmap;
 
   private static boolean contextHasBug(Context context) {
     return context == null ||
@@ -383,7 +381,6 @@ public class AirMapView extends MapView implements GoogleMap.InfoWindowAdapter,
   public void setGroundOverlay(ReadableMap groundOverlay) {
       if (groundOverlay == null) return;
 
-      String image = groundOverlay.getString("image");
       final Double lat = groundOverlay.getMap("position").getDouble("latitude");
       final Double lng = groundOverlay.getMap("position").getDouble("longitude");
       final Float bearing = (groundOverlay.hasKey("bearing")) ? (float) groundOverlay.getDouble("bearing") : 0f;
@@ -392,7 +389,7 @@ public class AirMapView extends MapView implements GoogleMap.InfoWindowAdapter,
       final Float height = (groundOverlay.hasKey("height")) ? (float) groundOverlay.getDouble("height") : 100f;
 
       ImageRequest imageRequest = ImageRequestBuilder
-          .newBuilderWithSource(Uri.parse(image))
+          .newBuilderWithSource(Uri.parse(groundOverlay.getString("image")))
           .build();
 
       ImagePipeline imagePipeline = Fresco.getImagePipeline();
@@ -411,14 +408,8 @@ public class AirMapView extends MapView implements GoogleMap.InfoWindowAdapter,
                           CloseableStaticBitmap closeableStaticBitmap = (CloseableStaticBitmap) imageClose;
                           Bitmap bmp = closeableStaticBitmap.getUnderlyingBitmap();
                           if (bmp != null) {
-                              mBitmap = bmp.copy(Bitmap.Config.ARGB_8888, true);
-
-                              // Remove the already existing GroundOverlay, so it doesn't accumulate every render
-                              if(currGroundOverlay != null) currGroundOverlay.remove();
-
-                              // Keep the GroundOverlay object in memory
-                              currGroundOverlay = map.addGroundOverlay(new GroundOverlayOptions()
-                                  .image(BitmapDescriptorFactory.fromBitmap(mBitmap))
+                              map.addGroundOverlay(new GroundOverlayOptions()
+                                  .image(BitmapDescriptorFactory.fromBitmap(bmp))
                                   .position(new LatLng(lat, lng), width, height)
                                   .bearing(bearing)
                                   .transparency(transparency));
@@ -451,12 +442,14 @@ public class AirMapView extends MapView implements GoogleMap.InfoWindowAdapter,
       final Double latSW = scrollableBoundaries.getMap("southwest").getDouble("latitude");
       final Double lngSW = scrollableBoundaries.getMap("southwest").getDouble("longitude");
 
-      LatLngBounds srollableBounds = new LatLngBounds(
+      LatLngBounds scrollableBounds = new LatLngBounds(
           new LatLng(latSW, lngSW), // southwest
           new LatLng(latNE, lngNE)  // northeast
       );
 
-      map.setLatLngBoundsForCameraTarget(srollableBounds);
+      map.setLatLngBoundsForCameraTarget(scrollableBounds);
+
+      scrollableBounds = null;
   }
 
   public void setRegion(ReadableMap region) {
@@ -632,6 +625,9 @@ public class AirMapView extends MapView implements GoogleMap.InfoWindowAdapter,
     position.putDouble("y", screenPoint.y);
     event.putMap("position", position);
 
+    coordinate = null;
+    position = null;
+
     return event;
   }
 
@@ -691,6 +687,7 @@ public class AirMapView extends MapView implements GoogleMap.InfoWindowAdapter,
         map.moveCamera(cu);
       }
     }
+    builder = null;
   }
 
   public void fitToSuppliedMarkers(ReadableArray markerIDsArray, boolean animated) {
@@ -726,6 +723,9 @@ public class AirMapView extends MapView implements GoogleMap.InfoWindowAdapter,
         map.moveCamera(cu);
       }
     }
+
+    markerIDs = null;
+    builder = null;
   }
 
   public void fitToCoordinates(ReadableArray coordinatesArray, ReadableMap edgePadding,
@@ -755,6 +755,7 @@ public class AirMapView extends MapView implements GoogleMap.InfoWindowAdapter,
     }
     map.setPadding(0, 0, 0,
         0); // Without this, the Google logo is moved up by the value of edgePadding.bottom
+    builder = null;
   }
 
   // InfoWindowAdapter interface
@@ -956,5 +957,6 @@ public class AirMapView extends MapView implements GoogleMap.InfoWindowAdapter,
     LatLng coords = this.map.getProjection().fromScreenLocation(point);
     WritableMap event = makeClickEventData(coords);
     manager.pushEvent(context, this, "onPanDrag", event);
+    point = null;
   }
 }
